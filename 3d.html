@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ohmic lab: 3D breadboard wiring</title>
+<style>
+:root{--bg:#eef3f1;--p:#fff;--ink:#14262c;--mu:#566b70;--ln:#c5d3d0;--ac:#0f6b6b;--rd:#c8372d;--am:#d99a00;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1a1d;--p:#172529;--ink:#e3eeec;--mu:#93a9ad;--ln:#2b3f44;--ac:#4cc2bd;--rd:#ff6a5c;--am:#f0b429;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:1050px;margin:auto;padding:16px}h1{font-size:1.4rem;margin:0 0 4px}
+a{color:var(--ac)}.mu{color:var(--mu);font-size:.9rem}
+#stage{background:#070d0f;position:relative;height:min(68vh,540px);border:1px solid var(--ln);border-radius:10px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#hint{position:absolute;left:10px;bottom:6px;margin:0;font-size:.8rem;color:#33474c;background:#ffffffb0;padding:2px 8px;border-radius:6px;pointer-events:none}
+.box{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:12px 16px;margin:12px 0}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}@media(max-width:700px){.g{grid-template-columns:1fr}}
+input[type=range]{width:100%}label{display:block}
+button{font:inherit;padding:6px 12px;border:1px solid var(--ln);border-radius:8px;background:var(--p);color:var(--ink);cursor:pointer;margin:2px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--am)}
+#cap{font-weight:600;margin:8px 0 0;min-height:3em}.warn{border-left:4px solid var(--rd);padding:6px 12px;background:var(--bg);border-radius:0 8px 8px 0;font-size:.92rem;margin:8px 0 0}
+code{background:var(--bg);padding:1px 5px;border-radius:4px}
+</style></head><body><main>
+<h1>3D breadboard wiring (same circuit as the diagram)</h1>
+<p class="mu">Back to the <a href="index.html">checklist and live schematic</a>. Drag the board to orbit, drag the black knob to spin the pot, step through the build below.</p>
+<div id="stage"><canvas id="c"></canvas><p id="hint">Drag: orbit · drag the knob: spin it · wheel or slider: zoom</p></div>
+<div class="box"><div class="g">
+<div><label>Build step <b id="sn"></b> of 15 <input id="st" type="range" min="0" max="15" value="15"></label>
+<button id="pv">◀ Previous</button><button id="nx">Next ▶</button><button id="vt">Top view</button><button id="vf">Front view</button>
+<p id="cap"></p></div>
+<div><label>Pot knob angle <b id="an"></b> <input id="ka" type="range" min="0" max="270" value="0"></label>
+<label>V1 source <b id="vn"></b> <input id="v1" type="range" min="0" max="6" step="0.1" value="3"></label><label><input type="checkbox" id="sw" checked> S1 closed</label><label><input type="checkbox" id="ma" checked> Ammeter display on</label><label><input type="checkbox" id="mv" checked> Voltmeter display on</label><label><input type="checkbox" id="rb" checked> Rainbow LED</label><p class="mu">Display off only blanks the reading. The meter stays wired, so the circuit is unchanged.</p><label>Zoom <input id="zm" type="range" min="14" max="60" value="32"></label>
+<p class="mu" id="pr"></p></div></div></div>
+<div class="box"><b>How to read the 3-pin pot (pins 1-2-3)</b>
+<ul><li><b>Pin 2 (middle)</b> is the wiper. In this circuit it goes to the + rail with jumper <code>J1</code>.</li>
+<li><b>Pin 3</b> goes to the − rail with <code>J2</code>. <b>Pin 1</b> is left empty.</li>
+<li>Which end pin is “3”? Put a meter on Ω between the middle pin and one end pin and turn the knob clockwise. The end pin where the reading <b>falls toward 0 Ω</b> is pin 3 and goes in <code>col 5</code>. The other end pin is pin 1 and goes in <code>col 3</code>.</li>
+<li>Start with the knob fully counter-clockwise (pin 2↔3 about 10 kΩ). Fully clockwise shorts the supply.</li></ul></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),CAP=["Pot: pin 1 col 3, pin 2 (wiper) col 4, pin 3 col 5, all row e. Knob fully counter-clockwise.","S1 (open): legs in col 9 and col 11, row e.","R1 100 Ω: col 14 row c to col 18 row c.","220 Ω: col 14 row d to col 21 row d.","LED: long leg col 21 row b, short leg col 24 row b.","J1: col 4 row a to the + rail (wiper to V1 +).","J2: col 5 row a to the − rail (pin 3 to ground).","J3: col 9 row a to the + rail (S1 input).","J4: col 18 row a to the − rail (R1 to Node B).","J5: col 24 row a to the − rail (LED to Node B).","Ammeter: red to col 11 row a, black (COM) to col 14 row a = Node A.","Voltmeter: red to col 14 row e, black (COM) to the − rail.","Power off: a meter in Ω between the + and − rails should read about 10 kΩ.","V1: red to the + rail, black to the − rail. Set 0 V, S1 still open.","Close S1 and raise V1 in 0.6 V steps to 6.0 V. The LED lights."];
+const X=c=>c-15.5,ZR={a:-3.5,b:-2.5,c:-1.5,d:-.5,e:.5,p:-6.5,m:-5.5},V3=(x,y,z)=>new THREE.Vector3(x,y,z),H=(c,r)=>V3(X(c),-.25,ZR[r]);
+const mt=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.5,metalness:.1},o||{}));
+let R;try{R=new THREE.WebGLRenderer({canvas:$("#c"),antialias:true})}catch(e){$("#stage").innerHTML='<p style="padding:16px">3D needs WebGL. The 2D schematic in index.html shows the same wiring.</p>';throw e}
+R.setClearColor(0x070d0f);const sc=new THREE.Scene(),camr=new THREE.PerspectiveCamera(40,1,.1,300);
+sc.fog=new THREE.Fog(0x070d0f,42,95);sc.add(new THREE.AmbientLight(0xffffff,.8));const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(10,30,20);sc.add(dl);
+const S={a:0,s:15,v:3},P=[];const add=(o,k)=>{sc.add(o);P.push([o,k]);return o};
+function lab(t,s,c,w){const k=document.createElement("canvas");k.width=192;k.height=128;const g=k.getContext("2d");g.fillStyle="rgba(255,255,255,.9)";g.fillRect(8,8,176,112);g.strokeStyle=c;g.lineWidth=6;g.strokeRect(8,8,176,112);g.fillStyle=c;g.textAlign="center";g.font="bold "+(s?64:46)+"px sans-serif";g.fillText(t,96,s?72:78);if(s){g.font="bold 26px sans-serif";g.fillStyle="#222";g.fillText(s,96,106)}
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(k),depthTest:false,fog:false}));w=w||2.2;sp.scale.set(w,w*2/3,1);sp.renderOrder=9;return sp}
+function arch(A,B,h,r,col){const m=A.clone().lerp(B,.5);return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([A,V3(A.x,A.y+.8,A.z),V3(m.x,Math.max(A.y,B.y)+h,m.z),V3(B.x,B.y+.8,B.z),B]),48,r,6),mt(col))}
+// ---- board ----
+{const tx=document.createElement("canvas");tx.width=1360;tx.height=640;const g=tx.getContext("2d"),px=x=>(x+17)*40,pz=z=>(z+8)*40;
+ g.fillStyle="#e7e3d6";g.fillRect(0,0,1360,640);g.fillStyle="#c8372d";g.fillRect(px(-15),pz(-7.1),1200,4);g.fillStyle="#2b62c9";g.fillRect(px(-15),pz(-4.95),1200,4);
+ g.font="bold 19px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillStyle="#333";
+ for(let c=1;c<=30;c++){g.fillText(c,px(X(c)),pz(-4.5));g.fillText(c,px(X(c)),pz(1.5))}
+ "abcde".split("").forEach((l,i)=>g.fillText(l,px(-16.2),pz(-3.5+i)));"fghij".split("").forEach((l,i)=>g.fillText(l,px(-16.2),pz(2.5+i)));
+ g.font="bold 30px sans-serif";g.fillStyle="#c8372d";g.fillText("+",px(-16.2),pz(-6.5));g.fillStyle="#2b62c9";g.fillText("−",px(-16.2),pz(-5.5));
+ const m=mt(0xe7e3d6),mm=[m,m,mt(0xffffff,{map:new THREE.CanvasTexture(tx)}),m,m,m],b=new THREE.Mesh(new THREE.BoxGeometry(34,1.5,16),mm);b.position.y=-.75;sc.add(b);
+ const tb=new THREE.Mesh(new THREE.PlaneGeometry(120,80),mt(0x16242a));tb.rotation.x=-Math.PI/2;tb.position.y=-1.51;sc.add(tb);
+ const zs=[-6.5,-5.5,-3.5,-2.5,-1.5,-.5,.5,2.5,3.5,4.5,5.5,6.5],hm=new THREE.InstancedMesh(new THREE.BoxGeometry(.5,.05,.5),mt(0x2a2a2a),360);let n=0;const d=new THREE.Object3D();
+ zs.forEach(z=>{for(let c=1;c<=30;c++){d.position.set(X(c),.02,z);d.updateMatrix();hm.setMatrixAt(n++,d.matrix)}});hm.frustumCulled=false;sc.add(hm)}
+// ---- pot (like the photo: brown base, 3 pins, metal can, nut, shaft, knob) ----
+const pot=new THREE.Group(),cx=X(4),zk=2.6;
+[3,4,5].forEach(c=>{const p=new THREE.Mesh(new THREE.BoxGeometry(.22,1.7,.22),mt(0xc9ccd0,{metalness:.8}));p.position.set(X(c),.6,ZR.e);pot.add(p)});
+const pl=(g,x,y,z,c,o)=>{const m=new THREE.Mesh(g,mt(c,o));m.position.set(x,y,z);pot.add(m);return m};
+pl(new THREE.BoxGeometry(3.9,.3,2.2),cx,1.5,1.5,0x8a4b1f);pl(new THREE.CylinderGeometry(1.75,1.75,1.1,28),cx,2.2,zk,0xd8d08a);
+pl(new THREE.CylinderGeometry(1.6,1.6,.15,28),cx,2.82,zk,0xc9ccd0,{metalness:.8});pl(new THREE.CylinderGeometry(1,1,.3,6),cx,3.1,zk,0xc9ccd0,{metalness:.8});pl(new THREE.CylinderGeometry(.6,.6,.9,20),cx,3.35,zk,0xb5b9bd,{metalness:.8});
+const knob=new THREE.Group();knob.position.set(cx,3.8,zk);pot.add(knob);
+[[new THREE.CylinderGeometry(.4,.4,1.3,16),0,.45,0,0xb5b9bd],[new THREE.CylinderGeometry(1.05,1.05,.7,32),0,.9,0,0x2b2b2b],[new THREE.BoxGeometry(.16,.06,.95),0,1.28,.5,0xffffff]].forEach(([g,x,y,z,c])=>{const m=new THREE.Mesh(g,mt(c));m.position.set(x,y,z);knob.add(m)});
+[[3,"1","unused","#666",-1.8,3.2],[4,"2","wiper","#b87400",0,4.6],[5,"3","to −","#c8372d",1.8,3.2]].forEach(([c,t,s,col,dx,y])=>{const l=lab(t,s,col,1.9);l.position.set(X(c)+dx,y,-.6);pot.add(l);
+ pot.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(X(c),1.5,ZR.e),V3(X(c)+dx,y-.6,-.6)]),new THREE.LineBasicMaterial({color:col})))});
+add(pot,0);
+// ---- S1 ----
+const s1=new THREE.Group();s1.position.set(X(10),0,.5);[-1,1].forEach(x=>{const l=new THREE.Mesh(new THREE.BoxGeometry(.2,.7,.2),mt(0xc9ccd0));l.position.set(x,-.05,0);s1.add(l)});
+const sb=new THREE.Mesh(new THREE.BoxGeometry(3,1.2,1.2),mt(0x333333));sb.position.y=.6;s1.add(sb);
+const lv=new THREE.Group();lv.position.y=1.2;const lb=new THREE.Mesh(new THREE.BoxGeometry(.3,.9,.3),mt(0xffffff));lb.position.y=.45;lv.add(lb);s1.add(lv);const l1=lab("S1");l1.position.y=3;s1.add(l1);add(s1,1);
+// ---- resistors ----
+function res(c1,r1,c2,r2,bd,k,t,s){const A=H(c1,r1),B=H(c2,r2),m=A.clone().lerp(B,.5),g=new THREE.Group();
+ g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([A,V3(A.x,.9,A.z),V3(B.x,.9,B.z),B],"chordal"),30,.08,6),mt(0xc9ccd0,{metalness:.8})));
+ const b=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,2.6,16),mt(0xd9c29a));b.rotation.z=Math.PI/2;b.position.set(m.x,.9,m.z);g.add(b);
+ bd.forEach((c,i)=>{const q=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,.17,16),mt(c));q.rotation.z=Math.PI/2;q.position.set(m.x-.8+i*.4,.9,m.z);g.add(q)});
+ const l=lab(t,s,"#14262c",2.1);l.position.set(m.x,2.5,m.z);g.add(l);add(g,k)}
+res(14,"c",18,"c",[0x6b3a1a,0x111111,0x6b3a1a],2,"R1","100 Ω");res(14,"d",21,"d",[0xcc2222,0xcc2222,0x6b3a1a],3,"220","Ω");
+// ---- LED ----
+const led=new THREE.Group(),lm=mt(0xff3b2f,{emissive:0xff2a1a,emissiveIntensity:.05,transparent:true,opacity:.92}),lx=X(22.5);
+[[21,-.3],[24,.3]].forEach(([c,o])=>led.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([H(c,"b"),V3(X(c),.8,ZR.b),V3(lx+o,1.7,ZR.b)]),20,.08,6),mt(0xc9ccd0,{metalness:.8}))));
+const ld=new THREE.Mesh(new THREE.CylinderGeometry(.62,.62,.9,20),lm);ld.position.set(lx,2.1,ZR.b);led.add(ld);const lt=new THREE.Mesh(new THREE.SphereGeometry(.62,20,12),lm);lt.position.set(lx,2.55,ZR.b);led.add(lt);
+const ll=lab("LED","long leg = +","#c8372d",2.2);ll.position.set(lx,4.1,ZR.b);led.add(ll);add(led,4);
+// ---- jumpers J1-J5 ----
+[["J1",4,"a",4,"p",0xff8c00,5],["J2",5,"a",5,"m",0x111111,6],["J3",9,"a",9,"p",0xd42020,7],["J4",18,"a",18,"m",0x2b62c9,8],["J5",24,"a",24,"m",0x8a3ab9,9]].forEach(([n,c1,r1,c2,r2,col,k])=>{
+ const A=H(c1,r1),B=H(c2,r2),g=new THREE.Group();g.add(arch(A,B,1.7,.1,col));const l=lab(n,"",col===0x111111?"#111":"#"+col.toString(16).padStart(6,"0"),1.5);l.position.set(A.x,3.4,(A.z+B.z)/2);g.add(l);add(g,k)});
+// ---- meters and V1 ----
+const SCR={};function dev(x,t,k,jr,jb,tr,tb){const g=new THREE.Group(),b=new THREE.Mesh(new THREE.BoxGeometry(7,3,4.4),mt(0xe2b100));b.position.set(x,0,-13);g.add(b);const k2=document.createElement("canvas");k2.width=256;k2.height=96;const tx=new THREE.CanvasTexture(k2);SCR[t]={c:k2,x:tx};const sp=new THREE.Mesh(new THREE.PlaneGeometry(4.6,1.7),new THREE.MeshBasicMaterial({map:tx}));sp.rotation.x=-Math.PI/2;sp.position.set(x,1.53,-13.4);g.add(sp);
+ const l=lab(t,"",jr==="v1"?"#c8372d":"#14262c",3);l.position.set(x,3.6,-13);g.add(l);
+ [[x-1.2,0xd42020],[x+1.2,0x111111]].forEach(([jx,c],i)=>{const j=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.3,14),mt(c));j.position.set(jx,1.55,-11.4);g.add(j);g.add(arch(V3(jx,1.6,-11.4),i?tb:tr,1.6,.09,c))});add(g,k)}
+dev(-1,"AMMETER",10,0,0,H(11,"a"),H(14,"a"));dev(8,"VOLTMETER",11,0,0,H(14,"e"),H(16,"m"));dev(-12,"V1 0–6 V",13,"v1",0,H(1,"p"),H(1,"m"));
+// ---- LED physics, glow, rainbow ----
+const NV=.0517,IS=4.2e-19,idd=v=>IS*(Math.exp(v/NV)-1);function ledI(Vs,R){let lo=0,hi=Vs;for(let k=0;k<50;k++){const m=(lo+hi)/2;m+idd(m)*R>Vs?hi=m:lo=m}return idd((lo+hi)/2)}
+function sim(live){const Rp=Math.max(10,1e4*(1-S.a/270)),dv=V=>V/100+ledI(V,220),f=V=>V+(V/Rp+(live?dv(V):0))-S.v;let lo=0,hi=S.v;for(let k=0;k<45;k++){const m=(lo+hi)/2;f(m)>0?hi=m:lo=m}const V=(lo+hi)/2;return{V:live?V:0,I:live?dv(V):0,Il:live?ledI(V,220):0}}
+function scr(n,t,on){const o=SCR[n],g=o.c.getContext("2d");g.fillStyle=on?"#0c2b1b":"#101414";g.fillRect(0,0,256,96);g.fillStyle=on?"#8dffb0":"#3a4545";g.font="bold 54px monospace";g.textAlign="center";g.fillText(on?t:"OFF",128,68);o.x.needsUpdate=true}
+const ledL=new THREE.PointLight(0xff2a1a,0,14);ledL.position.set(lx,3.2,ZR.b);sc.add(ledL);let glow=0;
+function loop(t){requestAnimationFrame(loop);if(glow>.02&&!document.hidden){const c=$("#rb").checked?new THREE.Color().setHSL((t/2500)%1,1,.5):new THREE.Color(0xff2a1a);lm.color.copy(c);lm.emissive.copy(c);ledL.color.copy(c);cam()}}
+// ---- camera ----
+let th=0,ph=1,rad=32;const tg=V3(0,0,-3);
+function cam(){camr.position.set(tg.x+rad*Math.sin(ph)*Math.sin(th),rad*Math.cos(ph),tg.z+rad*Math.sin(ph)*Math.cos(th));camr.lookAt(tg);R.render(sc,camr)}
+function rs(){const e=$("#stage");R.setSize(e.clientWidth,e.clientHeight,false);camr.aspect=e.clientWidth/e.clientHeight;camr.updateProjectionMatrix();cam()}
+function upd(){const s=S.s,r23=Math.max(10,1e4*(1-S.a/270)),sw=$("#sw").checked,live=s>=14&&sw,q=sim(live);P.forEach(([o,k])=>o.visible=k<s);lv.rotation.z=sw?-.6:.6;glow=live&&s>=5?Math.min(1,q.Il/.012):0;lm.emissiveIntensity=.05+1.6*glow;ledL.intensity=s>=5?2.2*glow:0;if(glow<.02){lm.color.set(0xff3b2f);lm.emissive.set(0xff2a1a)}scr("AMMETER",(q.I*1e3).toFixed(1)+" mA",$("#ma").checked);scr("VOLTMETER",q.V.toFixed(2)+" V",$("#mv").checked);scr("V1 0–6 V",S.v.toFixed(1)+" V",true);$("#vn").textContent=S.v.toFixed(1)+" V";
+ knob.rotation.y=-(S.a-135)*Math.PI/180;$("#sn").textContent=s;$("#st").value=s;$("#cap").textContent=s?CAP[s-1]:"Bare breadboard: rails on top (red +, blue −), columns 1–30, rows a–e.";$("#an").textContent=Math.round(S.a)+"°";$("#ka").value=S.a;
+ const f=v=>v>=1e3?(v/1e3).toFixed(2)+" kΩ":v.toFixed(0)+" Ω";$("#pr").innerHTML=`Pin 2↔3 ≈ <b>${f(r23)}</b>, pin 1↔2 ≈ <b>${f(1e4-r23)}</b>.`+(r23<200?'<span class="warn" style="display:block">Danger: wiper at the pin 3 end shorts V1. Turn counter-clockwise.</span>':"");cam()}
+$("#st").oninput=e=>{S.s=+e.target.value;upd()};$("#nx").onclick=()=>{S.s=Math.min(15,S.s+1);upd()};$("#pv").onclick=()=>{S.s=Math.max(0,S.s-1);upd()};
+$("#ka").oninput=e=>{S.a=+e.target.value;upd()};$("#v1").oninput=e=>{S.v=+e.target.value;upd()};["sw","ma","mv","rb"].forEach(i=>$("#"+i).onchange=upd);$("#zm").oninput=e=>{rad=+e.target.value;cam()};
+$("#vt").onclick=()=>{th=0;ph=.05;cam()};$("#vf").onclick=()=>{th=0;ph=1.35;cam()};
+const cv=$("#c"),ray=new THREE.Raycaster(),mv=new THREE.Vector2();let md=0,lx0=0,ly0=0;
+cv.onpointerdown=e=>{const b=cv.getBoundingClientRect();mv.set((e.clientX-b.left)/b.width*2-1,-(e.clientY-b.top)/b.height*2+1);ray.setFromCamera(mv,camr);md=pot.visible&&ray.intersectObject(knob,true).length?2:1;lx0=e.clientX;ly0=e.clientY;cv.setPointerCapture(e.pointerId)};
+cv.onpointerup=()=>md=0;cv.onpointermove=e=>{if(!md)return;const dx=e.clientX-lx0,dy=e.clientY-ly0;lx0=e.clientX;ly0=e.clientY;
+ if(md===2){S.a=Math.max(0,Math.min(270,S.a+dx*.8));upd()}else{th-=dx*.01;ph=Math.max(.05,Math.min(1.5,ph-dy*.01));cam()}};
+cv.onwheel=e=>{e.preventDefault();rad=Math.max(14,Math.min(60,rad+e.deltaY*.03));$("#zm").value=rad;cam()};
+addEventListener("resize",rs);rs();upd();requestAnimationFrame(loop);
+</script></main></body></html>

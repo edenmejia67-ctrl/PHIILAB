@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ohmic lab: build checklist + live circuit</title>
+<style>
+:root{--bg:#eef3f1;--p:#fff;--ink:#14262c;--mu:#566b70;--ln:#c5d3d0;--ac:#0f6b6b;--rd:#c8372d;--am:#d99a00;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1a1d;--p:#172529;--ink:#e3eeec;--mu:#93a9ad;--ln:#2b3f44;--ac:#4cc2bd;--rd:#ff6a5c;--am:#f0b429;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:1050px;margin:auto;padding:16px}
+h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1.1rem;margin:0 0 8px}
+section{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:14px 16px;margin:0 0 14px}
+.mu{color:var(--mu);font-size:.9rem}.warn{border-left:4px solid var(--rd);padding:6px 12px;margin:8px 0;background:var(--bg);border-radius:0 8px 8px 0;font-size:.92rem}
+ul.ck{list-style:none;padding:0;margin:0}ul.ck li{margin:0 0 7px}
+label{cursor:pointer}input[type=checkbox]{width:19px;height:19px;vertical-align:-4px;margin-right:8px;accent-color:var(--ac)}
+li.done label{opacity:.55;text-decoration:line-through}
+code,b.m{font-family:ui-monospace,Menlo,monospace}code{background:var(--bg);padding:1px 5px;border-radius:4px}
+.bar{height:8px;background:var(--ln);border-radius:4px;overflow:hidden;margin:6px 0 12px}.bar i{display:block;height:100%;background:var(--ac);width:0}
+.sim{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}@media(max-width:800px){.sim{grid-template-columns:1fr}}
+svg{width:100%;height:auto;display:block}svg text{font:12px ui-monospace,monospace;fill:var(--ink)}
+.w{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.rd{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.rd div{background:var(--bg);border-radius:8px;padding:6px 10px}.rd small{display:block;color:var(--mu);font-size:.76rem}.rd b{font-size:1.05rem}
+input[type=range]{width:100%}.row{margin:10px 0}
+#knob{touch-action:none;cursor:grab;max-width:190px;margin:auto;outline-offset:4px}#knob:focus-visible,input:focus-visible{outline:3px solid var(--am)}
+</style></head><body><main>
+<header><h1>Ohmic vs non-Ohmic lab: build checklist + live circuit</h1>
+<p class="mu">The circuit is exactly the one in <code>assets/circuit-reference.png</code>: V1 → S1 → ammeter → Node A → R1 ∥ LED branch ∥ voltmeter → Node B, with P1’s wiper on the V1 (+) node and pin 3 on ground. Nothing here changes it. <a href="3d.html"><b>Open the 3D breadboard view →</b></a></p></header>
+
+<section><h2>1. Materials (tick as you collect)</h2><div class="bar"><i id="b0"></i></div><ul class="ck" id="mat"></ul></section>
+
+<section><h2>2. Wiring, in order (breadboard columns 1–30; rows a–e of one column are one connected strip)</h2>
+<p class="warn"><b>Power off and S1 open while wiring.</b> Connect the supply last. Rails: top red row = <b>+ rail</b> (V1 +), second row = <b>− rail</b> (V1 −, Node B). Use the rail hole in the <b>same column number</b>: J1 col 4, J2 col 5, J3 col 9, J4 col 18, J5 col 24, voltmeter black col 16, V1 red and black col 1.</p>
+<div class="bar"><i id="b1"></i></div><ul class="ck" id="stp"></ul></section>
+
+<section><h2>3. Live circuit (same topology as your diagram)</h2>
+<div class="sim"><div><svg id="sc" viewBox="0 0 760 400" role="img" aria-label="Circuit schematic matching the lab diagram"></svg></div>
+<div>
+<div class="row"><label for="v1"><b>V1 DC source (0–6 V)</b> <b class="m" id="v1n"></b></label><input id="v1" type="range" min="0" max="6" step="0.1" value="3"></div>
+<div class="mu">P1 knob (drag to spin, or arrow keys)</div>
+<svg id="knob" viewBox="0 0 160 170" tabindex="0" role="slider" aria-label="Potentiometer knob" aria-valuemin="0" aria-valuemax="270"></svg>
+<div class="row"><label><input type="checkbox" id="sw" checked>S1 closed</label><br><label><input type="checkbox" id="ma" checked>Ammeter display on</label><br><label><input type="checkbox" id="mv" checked>Voltmeter display on</label><br><label><input type="checkbox" id="rb" checked>Rainbow LED</label><br><label><input type="checkbox" id="bR" checked>R1 branch (J4 in)</label><br><label><input type="checkbox" id="bL" checked>LED branch (J5 in)</label></div>
+<div class="rd"><div><small>Voltmeter (Node A–B)</small><b id="rv"></b></div><div><small>Ammeter</small><b id="ra"></b></div><div><small>P1 wiper→pin 3</small><b id="rp"></b></div><div><small>P1 power</small><b id="rw"></b></div></div>
+<p class="warn" id="ws"></p>
+</div></div>
+<p class="mu">Model values (typical red LED, 10 kΩ pot, supply resistance 1 Ω), not measurements. Pulling J4 or J5 isolates Component A (R1) or B (LED) for the lab’s two data tables.</p></section>
+
+<section><h2>4. What I found in your circuit (read before building)</h2><ul>
+<li>As drawn, P1 uses wiper (pin 2) and pin 3 only, and pin 1 is unconnected. That makes it a variable resistor across V1. <b>The voltage at Node A is set by V1</b>; P1 only changes how much current the pot draws.</li>
+<li><b>Short-circuit risk:</b> turned fully clockwise, the wiper meets pin 3 (about 0 Ω) and shorts the supply. Start fully counter-clockwise (10 kΩ). The sim flags the pot’s power rating (about 0.125 W).</li>
+<li>With a fixed 4×AA pack, the circuit as drawn cannot step 0–6 V. That needs an adjustable 0–6 V supply (V1 in your diagram).</li>
+<li>The voltmeter reads across the whole LED branch (220 Ω + LED), as drawn.</li>
+<li>Pin order: with the pins facing you and pointing down, clockwise should move the wiper toward the right pin. Check with a meter in Ω mode between pins 2 and 3; it should fall as you turn clockwise.</li></ul>
+<h2>Suggestions and improvements (none change the circuit)</h2><ul>
+<li>Stick a tape mark on the pot at the fully counter-clockwise start position.</li>
+<li>If your supply has a current limit, set it near 100 mA. It protects the pot, the LED and the ammeter without touching the circuit.</li>
+<li>Take three readings per voltage step and average them, then compare with the model.</li>
+<li>Use solid-core wire and push parts in fully; loose holes add contact resistance.</li>
+<li>Tape small flags J1–J5 on the jumpers, and photograph the finished board for the report.</li>
+<li>Zero both meters before starting, and use the 200 mA range on the ammeter.</li></ul>
+<h2>Questions for you</h2><ol>
+<li>Is V1 an adjustable 0–6 V bench supply, or the fixed 4×AA pack?</li>
+<li>Is the pot 10 kΩ (marked B103), and does it fit the breadboard holes?</li>
+<li>Do both meters have a mA/A jack and a V jack (the circuit shows 100 mA full scale)?</li>
+<li>Do you want an <i>optional</i> variant page where P1 is a true divider? It would change the circuit, so I haven’t built it.</li><li>The meter “display off” toggle only blanks the reading. Should it mean the meter is physically removed? That would break the loop (the ammeter is in series), so I kept it wired.</li><li>Want a data table in the page that records readings and exports CSV?</li></ol></section>
+</main>
+<script>
+const $=s=>document.querySelector(s),MAT=["Potentiometer, 10 kΩ, 3 pins (the one in your photo)","Half-size solderless breadboard (30 columns)","Adjustable 0–6 V DC supply, or 4×AA pack with holder and batteries (see Section 4)","SPST switch (S1)","Resistor 100 Ω (R1)","Resistor 220 Ω (LED limiter)","Red LED","2 × digital multimeters (one DC mA/A, one DC V) with probe leads","5 × jumper wires for J1–J5, plus 2 spare","Alligator-clip leads or extra jumpers (for the switch and supply)","Graph paper and the lab sheet"],
+STP=["Pot into row e: pin 1 → <code>col 3</code>, pin 2 (middle, wiper) → <code>col 4</code>, pin 3 → <code>col 5</code>. Turn the knob fully counter-clockwise. Nothing else touches col 3. Pin 3 is the end pin whose resistance to the middle pin <b>falls toward 0 Ω</b> as you turn clockwise (check with a meter).","S1 (open): one leg → <code>col 9 row e</code>, other leg → <code>col 11 row e</code>.","R1 100 Ω: <code>col 14 row c</code> ↔ <code>col 18 row c</code>.","220 Ω: <code>col 14 row d</code> ↔ <code>col 21 row d</code>.","LED: long leg (anode) → <code>col 21 row b</code>, short leg / flat side (cathode) → <code>col 24 row b</code>.","<b>J1</b> jumper: <code>col 4 row a</code> → + rail (wiper to V1 +).","<b>J2</b> jumper: <code>col 5 row a</code> → − rail (pin 3 to ground).","<b>J3</b> jumper: <code>col 9 row a</code> → + rail (S1 input).","<b>J4</b> jumper: <code>col 18 row a</code> → − rail (R1 to Node B).","<b>J5</b> jumper: <code>col 24 row a</code> → − rail (LED to Node B).","Ammeter (DC mA): red → <code>col 11 row a</code>, black/COM → <code>col 14 row a</code>. <code>col 14</code> is Node A.","Voltmeter (DC V, 20 V range): red → <code>col 14 row e</code>, black/COM → − rail.","Power still off. Meter in Ω mode between + rail and − rail should read about 10 kΩ with the knob fully counter-clockwise. If it reads 0 Ω, stop and re-check J1/J2 and the pot pins.","Connect V1: red → + rail, black → − rail. Set V1 to 0 V (or connect the pack).","Close S1, raise V1 in 0.6 V steps to 6.0 V and record. Pull J5 to test R1 alone, then replace J5 and pull J4 to test the LED alone."];
+const ST=(()=>{try{return JSON.parse(localStorage.getItem("ohm")||"{}")}catch(e){return{}}})();
+function list(id,arr,k){$(id).innerHTML=arr.map((t,i)=>`<li><label><input type="checkbox" data-k="${k}${i}"${ST[k+i]?" checked":""}>${t}</label></li>`).join("");
+ $(id).onchange=e=>{ST[e.target.dataset.k]=e.target.checked;try{localStorage.setItem("ohm",JSON.stringify(ST))}catch(x){}prog()}}
+function prog(){[["mat",MAT,"b0"],["stp",STP,"b1"]].forEach(([id,a,b])=>{let n=0;$("#"+id).querySelectorAll("input").forEach(c=>{c.closest("li").classList.toggle("done",c.checked);n+=c.checked});$("#"+b).style.width=100*n/a.length+"%"})}
+list("#mat",MAT,"m");list("#stp",STP,"s");prog();
+// ---- physics ----
+const NV=.0517,IS=4.2e-19,id=v=>IS*(Math.exp(v/NV)-1);
+function led(Vs,R){let lo=0,hi=Vs;for(let k=0;k<50;k++){const m=(lo+hi)/2;m+id(m)*R>Vs?hi=m:lo=m}return id((lo+hi)/2)}
+let S={v:3,a:0,sw:1,r:1,l:1,ma:1,mv:1};
+function solve(){const Rp=Math.max(10,1e4*(1-S.a/270)),dev=V=>(S.r?V/100:0)+(S.l?led(V,220):0),f=V=>V+1*(V/Rp+(S.sw?dev(V):0))-S.v;
+ let lo=0,hi=S.v;for(let k=0;k<45;k++){const m=(lo+hi)/2;f(m)>0?hi=m:lo=m}const V=(lo+hi)/2;return{V,Vn:S.sw?V:0,I:S.sw?dev(V):0,Rp,P:V*V/Rp,Il:S.l&&S.sw?led(V,220):0}}
+const zz=(x,y0)=>`M${x} ${y0}l10 5-20 10 20 10-20 10 20 10-20 10 10 5`;
+function draw(){const o=solve(),wy=171+60*S.a/270,g=(d)=>`<path d="${d}"/>`,dt=(x,y)=>`<circle cx="${x}" cy="${y}" r="4" style="fill:var(--ink)"/>`,yb=q=>q?360:320;
+ let s='<g class="w">'+g("M80 204V70H240")+g("M80 256V360H680")+g(`M200 70V${wy}H238`)+`<path d="M238 ${wy}l-9-5v10z" style="fill:var(--ink)"/>`+
+ g("M250 165l10 6-20 12 20 12-20 12 20 12-20 12 10 6V360")+g("M250 165V150")+`<circle cx="250" cy="150" r="4" style="fill:none"/>`+
+ g("M300 70H366M414 70H500V150H680")+(S.sw?g("M240 70H300"):g("M240 70L292 40"))+
+ g(zz(500,180)+`V${yb(S.r)}`)+g(zz(680,175)+"V250")+`<path id="lp" d="M666 250h28l-14 25z" style="fill:var(--rd);fill-opacity:${(.12+.88*Math.min(1,o.Il/.015)).toFixed(2)}"/>`+g(`M666 275h28M680 275V${yb(S.l)}`)+g("M700 255l12-12M706 267l12-12")+
+ g("M580 150V231M580 279V360")+'</g><g class="w" style="stroke-width:2"><circle cx="80" cy="230" r="26" style="fill:var(--p)"/><circle cx="390" cy="70" r="24" style="fill:var(--p)"/><circle cx="580" cy="255" r="24" style="fill:var(--p)"/></g>'+
+ dt(200,70)+dt(250,360)+dt(500,150)+dt(580,150)+dt(580,360)+dt(500,360)+dt(680,360);
+ s+=`<text x="80" y="234" text-anchor="middle">V1</text><text x="80" y="268" text-anchor="middle">${S.v.toFixed(1)}V</text><text x="64" y="196" style="fill:var(--rd)">+</text><text x="64" y="288">−</text><text x="390" y="74" text-anchor="middle">A</text><text x="390" y="112" text-anchor="middle">${S.ma?(o.I*1e3).toFixed(1)+" mA":"off"}</text><text x="580" y="259" text-anchor="middle">V</text><text x="580" y="300" text-anchor="middle">${S.mv?o.Vn.toFixed(2)+" V":"off"}</text>
+ <text x="270" y="30" text-anchor="middle">S1 ${S.sw?"closed":"open"}</text><text x="268" y="215">P1 10k</text><text x="214" y="${wy-6}" style="font-size:10px">2</text><text x="256" y="146" style="font-size:10px">1 (unused)</text><text x="256" y="300">3</text>
+ <text x="428" y="142">Node A</text><text x="590" y="380">Node B</text><text x="514" y="270">R1 100Ω</text><text x="692" y="200">220Ω</text><text x="706" y="290">LED</text>${S.r?"":'<text x="514" y="310" style="fill:var(--am)">J4 out</text>'}${S.l?"":'<text x="692" y="320" style="fill:var(--am)">J5 out</text>'}`;
+ $("#sc").innerHTML=s;
+ $("#rv").textContent=S.mv?o.Vn.toFixed(2)+" V":"off";$("#ra").textContent=S.ma?(o.I*1e3).toFixed(1)+" mA":"off";$("#rp").textContent=o.Rp>=1e3?(o.Rp/1e3).toFixed(2)+" kΩ":o.Rp.toFixed(0)+" Ω";$("#rw").textContent=(o.P*1e3).toFixed(o.P<.1?2:0)+" mW";$("#v1n").textContent=S.v.toFixed(1)+" V";
+ const w=$("#ws");w.textContent=o.P>.125?`P1 overloaded (${o.P.toFixed(2)} W vs about 0.125 W rating). Turn the knob counter-clockwise now.`:o.Rp<200&&S.v>0?"Knob near the pin 3 end: low resistance across the supply. Back off counter-clockwise.":S.sw?"":"S1 is open: the ammeter reads 0 and the LED is off. Close S1.";w.style.display=w.textContent?"":"none";
+ $("#knob").innerHTML=`<circle cx="80" cy="80" r="62" style="fill:none;stroke:var(--ln);stroke-width:2;stroke-dasharray:4 6"/><circle cx="80" cy="80" r="46" style="fill:var(--mu);stroke:var(--ink);stroke-width:3"/><g transform="rotate(${S.a-135} 80 80)"><path d="M80 80V40" style="stroke:var(--p);stroke-width:7;stroke-linecap:round"/></g><text x="10" y="150" style="font-size:10px">CCW: 10k</text><text x="100" y="150" style="font-size:10px">CW: ~0Ω</text><text x="80" y="168" text-anchor="middle" style="font-size:10px">pin1 · wiper · pin3</text>`;$("#knob").setAttribute("aria-valuenow",Math.round(S.a))}
+$("#v1").oninput=e=>{S.v=+e.target.value;draw()};
+[["sw","sw"],["bR","r"],["bL","l"],["ma","ma"],["mv","mv"]].forEach(([i,k])=>$("#"+i).onchange=e=>{S[k]=+e.target.checked;draw()});
+const K=$("#knob");let dr=0;
+function ang(e){const b=K.getBoundingClientRect(),x=e.clientX-(b.left+b.width*.5),y=e.clientY-(b.top+b.height*80/170),t=Math.atan2(x,-y)*180/Math.PI;return Math.max(0,Math.min(270,t+135))}
+K.onpointerdown=e=>{dr=1;K.setPointerCapture(e.pointerId);K.onpointermove(e)};K.onpointerup=()=>dr=0;
+K.onpointermove=e=>{if(!dr)return;const n=ang(e);if(Math.abs(n-S.a)<200){S.a=n;draw()}};
+K.onkeydown=e=>{const d={ArrowRight:5,ArrowUp:5,ArrowLeft:-5,ArrowDown:-5}[e.key];if(d){e.preventDefault();S.a=Math.max(0,Math.min(270,S.a+d));draw()}};
+draw();(function L(t){requestAnimationFrame(L);const e=$("#lp");if(e&&$("#rb").checked&&+e.style.fillOpacity>.14)e.style.fill="hsl("+(t/7%360)+",100%,50%)"})(0);
+</script></body></html>
